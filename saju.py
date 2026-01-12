@@ -50,11 +50,11 @@ st.markdown("""
     .stWarning { background-color: #451a03 !important; color: #fef3c7 !important; }
 
     /* [입력창 디자인] 다크모드 최적화 */
-    input[type="text"] {
+    input[type="text"], input[type="number"] {
         background-color: #334155 !important; color: white !important;
         border: 1px solid #64748b !important; caret-color: white !important;
     }
-    input[type="text"]:focus { border: 2px solid #facc15 !important; box-shadow: 0 0 10px #facc15 !important; }
+    input:focus { border: 2px solid #facc15 !important; box-shadow: 0 0 10px #facc15 !important; }
     div[data-baseweb="input"] { background-color: #334155 !important; border-radius: 5px !important; }
     div[data-baseweb="select"] > div { background-color: #334155 !important; color: white !important; }
     .stTextInput input, .stDateInput input { color: white !important; }
@@ -87,7 +87,22 @@ u_name = u_name_input if u_name_input else "방문자"
 # 3. 양력/음력 선택
 u_cal_type = st.radio("양력/음력 구분", ["양력", "음력"], horizontal=True, key="u_cal")
 
-u_birth = st.date_input("출생일", value=date(1980, 1, 1), min_value=date(1900, 1, 1), max_value=date(2050, 12, 31))
+# [수정된 부분] 달력 대신 직접 입력하는 방식으로 변경 (년/월/일 분리)
+st.write("▼ 출생 생년월일 (숫자로 직접 입력)")
+col_uy, col_um, col_ud = st.columns([1.2, 1, 1])
+with col_uy:
+    u_year = st.number_input("년도(Year)", min_value=1900, max_value=2050, value=1980, step=1, format="%d", key="u_y")
+with col_um:
+    u_month = st.selectbox("월(Month)", list(range(1, 13)), key="u_m") # 1~12월 숫자 선택
+with col_ud:
+    u_day = st.number_input("일(Day)", min_value=1, max_value=31, value=1, step=1, format="%d", key="u_d")
+
+# 입력받은 년/월/일을 날짜 형식으로 변환 (오류 방지)
+try:
+    u_birth = date(u_year, u_month, u_day)
+except ValueError:
+    st.error("⚠️ 날짜 형식이 올바르지 않습니다. (예: 2월 30일 등)")
+    u_birth = date(1980, 1, 1) # 기본값
 
 u_time = st.selectbox("출생 시간", [f"{i}시" for i in range(24)] + ["모름"])
 
@@ -100,7 +115,23 @@ if is_relation:
     st.write("### 👥 분석 대상 정보 입력")
     t_name = st.text_input("대상 성명", "심청이")
     t_cal_type = st.radio("대상 양력/음력", ["양력", "음력"], horizontal=True, key="t_cal")
-    t_birth = st.date_input("대상 생년월일", value=date(2015, 1, 1), min_value=date(1900, 1, 1), max_value=date(2050, 12, 31))
+    
+    # [수정된 부분] 상대방 생년월일도 똑같이 직접 입력 방식으로 변경
+    st.write("▼ 대상 생년월일 (숫자로 직접 입력)")
+    col_ty, col_tm, col_td = st.columns([1.2, 1, 1])
+    with col_ty:
+        t_year = st.number_input("대상 년도", min_value=1900, max_value=2050, value=2015, step=1, format="%d", key="t_y")
+    with col_tm:
+        t_month = st.selectbox("대상 월", list(range(1, 13)), key="t_m")
+    with col_td:
+        t_day = st.number_input("대상 일", min_value=1, max_value=31, value=1, step=1, format="%d", key="t_d")
+    
+    try:
+        t_birth = date(t_year, t_month, t_day)
+    except ValueError:
+        st.error("⚠️ 대상의 날짜 형식이 올바르지 않습니다.")
+        t_birth = date(2015, 1, 1)
+
     t_time = st.selectbox("대상 출생 시간", [f"{i}시" for i in range(24)] + ["모름"])
 
 st.write("---")
