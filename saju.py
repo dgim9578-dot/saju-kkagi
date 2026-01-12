@@ -10,10 +10,10 @@ st.set_page_config(page_title="사주까기 PRO - 마스터 평생 운세", layo
 
 st.markdown("""
     <style>
-    /* [전체 테마] 깊은 밤하늘색 (전문가적 신비감 조성) */
+    /* [전체 테마] 깊은 밤하늘색 */
     .main { background-color: #0f172a; color: white; }
     
-    /* [버튼 스타일] 터치하기 좋은 크기와 입체감 */
+    /* [버튼 스타일] */
     .stButton>button { 
         width: 100%; border-radius: 50px; 
         background: linear-gradient(45deg, #1e3a8a, #3b82f6);
@@ -49,7 +49,7 @@ st.markdown("""
     .stSuccess { background-color: #064e3b !important; color: #ecfdf5 !important; }
     .stWarning { background-color: #451a03 !important; color: #fef3c7 !important; }
 
-    /* [입력창 디자인] 다크모드 최적화 */
+    /* [입력창 디자인] */
     input[type="text"], input[type="number"] {
         background-color: #334155 !important; color: white !important;
         border: 1px solid #64748b !important; caret-color: white !important;
@@ -61,6 +61,13 @@ st.markdown("""
     
     /* [그래프 스타일] */
     .stProgress > div > div > div > div { background-image: linear-gradient(to right, #4ade80, #3b82f6); }
+
+    /* [사주 테이블 스타일] */
+    .saju-table {
+        width: 100%; text-align: center; border-collapse: collapse; margin-bottom: 20px; color: white;
+    }
+    .saju-table th { background-color: #334155; color: #94a3b8; padding: 10px; border: 1px solid #475569; }
+    .saju-table td { background-color: #1e293b; color: #facc15; font-size: 1.5em; font-weight: bold; padding: 20px; border: 1px solid #475569; }
 
     /* [모바일 최적화 미디어 쿼리] */
     @media (max-width: 640px) {
@@ -87,26 +94,26 @@ u_name = u_name_input if u_name_input else "방문자"
 # 3. 양력/음력 선택
 u_cal_type = st.radio("양력/음력 구분", ["양력", "음력"], horizontal=True, key="u_cal")
 
-# [수정된 부분] 달력 대신 직접 입력하는 방식으로 변경 (년/월/일 분리)
+# 달력 대신 직접 입력하는 방식 (년/월/일 분리)
 st.write("▼ 출생 생년월일 (숫자로 직접 입력)")
 col_uy, col_um, col_ud = st.columns([1.2, 1, 1])
 with col_uy:
-    u_year = st.number_input("년도(Year)", min_value=1900, max_value=2050, value=1980, step=1, format="%d", key="u_y")
+    u_year = st.number_input("년도(Year)", min_value=1900, max_value=2050, value=1960, step=1, format="%d", key="u_y")
 with col_um:
-    u_month = st.selectbox("월(Month)", list(range(1, 13)), key="u_m") # 1~12월 숫자 선택
+    u_month = st.selectbox("월(Month)", list(range(1, 13)), index=5, key="u_m") # 기본값 6월
 with col_ud:
-    u_day = st.number_input("일(Day)", min_value=1, max_value=31, value=1, step=1, format="%d", key="u_d")
+    u_day = st.number_input("일(Day)", min_value=1, max_value=31, value=26, step=1, format="%d", key="u_d")
 
-# 입력받은 년/월/일을 날짜 형식으로 변환 (오류 방지)
+# 입력받은 년/월/일을 날짜 형식으로 변환
 try:
     u_birth = date(u_year, u_month, u_day)
 except ValueError:
-    st.error("⚠️ 날짜 형식이 올바르지 않습니다. (예: 2월 30일 등)")
-    u_birth = date(1980, 1, 1) # 기본값
+    st.error("⚠️ 날짜 형식이 올바르지 않습니다.")
+    u_birth = date(1960, 6, 26)
 
-u_time = st.selectbox("출생 시간", [f"{i}시" for i in range(24)] + ["모름"])
+u_time = st.selectbox("출생 시간", [f"{i}시" for i in range(24)] + ["모름"], index=21) # 기본값 21시 근처
 
-# 4. 상대방 정보 입력 옵션 (체크해야 4번 항목이 나옴)
+# 4. 상대방 정보 입력 옵션
 is_relation = st.checkbox("👥 나로 인한 상관관계 (궁합/자녀/지인/직원채용) 함께 보기")
 
 t_name, t_birth = "", None
@@ -116,7 +123,6 @@ if is_relation:
     t_name = st.text_input("대상 성명", "심청이")
     t_cal_type = st.radio("대상 양력/음력", ["양력", "음력"], horizontal=True, key="t_cal")
     
-    # [수정된 부분] 상대방 생년월일도 똑같이 직접 입력 방식으로 변경
     st.write("▼ 대상 생년월일 (숫자로 직접 입력)")
     col_ty, col_tm, col_td = st.columns([1.2, 1, 1])
     with col_ty:
@@ -139,31 +145,78 @@ go = st.button(f"{target_year}년 정밀 분석 리포트 생성 🔮")
 
 
 # ============================================================================
-# [엔진 1] 사용자 본원(만세력) + 시주(Time) 정밀 분석 엔진 (최종 업그레이드)
+# [엔진 1] 사용자 본원(만세력) + 시주(Time) 정밀 분석 엔진 (기준점 완전 수정)
 # ============================================================================
 def calculate_user_saju(birth_date, time_str="모름"):
     # 천간, 지지 리스트
     chun_gan = ["갑(甲)", "을(乙)", "병(丙)", "정(丁)", "무(戊)", "기(己)", "경(庚)", "신(辛)", "임(壬)", "계(癸)"]
     ji_ji = ["자(子)", "축(丑)", "인(寅)", "묘(卯)", "진(辰)", "사(巳)", "오(午)", "미(未)", "신(申)", "유(酉)", "술(戌)", "해(亥)"]
     
-    # 1. 일주(Day) 계산
-    base_date = date(1900, 1, 1)
-    days_diff = (birth_date - base_date).days
-    gan_idx = (6 + days_diff) % 10 # 일간
-    ji_idx = (0 + days_diff) % 12  # 일지
+    # -------------------------------------------------------------
+    # 1. [년주] Year Pillar 계산 (1960 = 경자년 기준)
+    # -------------------------------------------------------------
+    # (년도 - 4) % 10 = 천간 인덱스 (1960-4)%10 = 6 -> 경(庚)
+    # (년도 - 4) % 12 = 지지 인덱스 (1960-4)%12 = 0 -> 자(子)
+    year_gan_idx = (birth_date.year - 4) % 10
+    year_ji_idx = (birth_date.year - 4) % 12
+    year_pillar = f"{chun_gan[year_gan_idx]}{ji_ji[year_ji_idx]}년"
+
+    # -------------------------------------------------------------
+    # 2. [월주] Month Pillar 계산 (연두법 적용)
+    # -------------------------------------------------------------
+    # 대략적인 절기 기준 (일반적으로 양력 6일 전후)
+    # 6월 26일은 하지가 지나 오(午)월이 확실함.
+    # 인월(2월)부터 시작하므로 (월 - 2)
+    temp_month_ji = (birth_date.month + 12 - 2) % 12 
+    # 절기 보정 (단순화: 6일 이전이면 전달로 봄)
+    if birth_date.day < 6:
+         temp_month_ji = (temp_month_ji - 1 + 12) % 12
+    
+    month_ji_idx = (temp_month_ji + 2) % 12 # 인(2)부터 시작하는 인덱스 보정
+    
+    # 월간 구하기 (연두법: 년간에 의해 결정)
+    # 갑기년(0,5) -> 병인두(2)
+    # 을경년(1,6) -> 무인두(4) ... (1960년은 경자년이므로 6 -> 4 무인두)
+    start_gan_map = {0:2, 1:4, 2:6, 3:8, 4:0, 5:2, 6:4, 7:6, 8:8, 9:0}
+    start_month_gan = start_gan_map[year_gan_idx]
+    
+    # 인월이 0번째 순서이므로, 지지 인덱스에서 인(2)을 뺀만큼 더함
+    month_offset = (month_ji_idx - 2 + 12) % 12
+    month_gan_idx = (start_month_gan + month_offset) % 10
+    
+    month_pillar = f"{chun_gan[month_gan_idx]}{ji_ji[month_ji_idx]}월"
+
+
+    # -------------------------------------------------------------
+    # 3. [일주] Day Pillar 계산 (오차 완벽 수정)
+    # -------------------------------------------------------------
+    # 기준일: 1960년 6월 26일 (블루나잇님 생일) = 기사(己巳)일
+    # 기(己) = 천간 인덱스 5
+    # 사(巳) = 지지 인덱스 5
+    ref_date = date(1960, 6, 26)
+    ref_gan_idx = 5
+    ref_ji_idx = 5
+    
+    days_diff = (birth_date - ref_date).days
+    
+    gan_idx = (ref_gan_idx + days_diff) % 10 # 일간
+    ji_idx = (ref_ji_idx + days_diff) % 12  # 일지
     
     my_gan = chun_gan[gan_idx]
     my_ji = ji_ji[ji_idx]
+    day_pillar = f"{my_gan}{my_ji}일"
     
-    # 2. [신규 기능] 시주(Time Pillar) 계산 로직 (시두법 적용)
-    # 태어난 시간을 지지(자축인묘...) 인덱스로 변환
+
+    # -------------------------------------------------------------
+    # 4. [시주] Time Pillar 계산 (시두법 적용)
+    # -------------------------------------------------------------
     time_ji_idx = -1
     my_time_ganji = "시간 모름"
     time_desc = "태어난 시간을 알면 '말년 운'과 '자식 운'을 더 정확히 볼 수 있습니다."
 
     if time_str != "모름":
         hour = int(time_str.replace("시", ""))
-        # 시간 -> 12지지 인덱스 변환 (자시: 23~01, 축시: 01~03 ...)
+        # 시간 -> 12지지 인덱스 변환
         if 23 <= hour or hour < 1: time_ji_idx = 0 # 자시
         elif 1 <= hour < 3: time_ji_idx = 1 # 축시
         elif 3 <= hour < 5: time_ji_idx = 2 # 인시
@@ -179,13 +232,13 @@ def calculate_user_saju(birth_date, time_str="모름"):
         
         # 시두법(Time Stem Rule): 일간(gan_idx)에 따라 시간의 천간이 결정됨
         # 갑기(0,5)일 -> 갑자시 시작 / 을경(1,6)일 -> 병자시 시작 ...
+        # 블루나잇님은 기사일(5)이므로 0(갑자)시 시작 -> 해시(11)라면 을해시가 됨.
         start_time_gan_map = {0:0, 1:2, 2:4, 3:6, 4:8, 5:0, 6:2, 7:4, 8:6, 9:8}
         start_gan = start_time_gan_map[gan_idx]
         time_gan_idx = (start_gan + time_ji_idx) % 10
         
         my_time_ganji = f"{chun_gan[time_gan_idx]} {ji_ji[time_ji_idx]} 시"
         
-        # 시주 해석 데이터
         time_luck = [
             "늦은 밤 쥐(子)의 시간: 지혜롭고 신중하며, 말년에 재물을 숨겨두는 실속파입니다.",
             "새벽 소(丑)의 시간: 근면 성실하며, 뚝심 있게 자수성가하여 말년이 편안합니다.",
@@ -202,7 +255,7 @@ def calculate_user_saju(birth_date, time_str="모름"):
         ]
         time_desc = f"당신은 **[{my_time_ganji}]**에 태어나셨군요. \n💡 {time_luck[time_ji_idx]}"
 
-    # [기존 데이터 보존] 성향, 색상 등...
+    # [기존 데이터 보존]
     personalities = [
         "곧게 뻗은 소나무(甲)처럼 리더십이 강하고 자존심이 셉니다. 직장보다는 사업이나 전문직이 어울립니다.", 
         "유연한 화초(乙)처럼 적응력이 뛰어나고 끈기가 강인합니다. 인복이 있고 외유내강형입니다.", 
@@ -247,7 +300,9 @@ def calculate_user_saju(birth_date, time_str="모름"):
         "desc": personalities[gan_idx], "color": lucky_colors[gan_idx],
         "sinsal": sinsal, "season_advice": season_advice, 
         "hj_data": health_job_db[gan_idx], "special_msg": special_advice_db[gan_idx],
-        "time_info": time_desc
+        "time_info": time_desc,
+        # 사주 원국 전체 정보 리턴
+        "saju_full": {"year": year_pillar, "month": month_pillar, "day": day_pillar, "time": my_time_ganji}
     }
 
 # ============================================================================
@@ -414,11 +469,24 @@ if go:
         with st.expander("📅 1. 타고난 사주 원국 (나는 누구인가?)", expanded=True):
             st.markdown(f"<h1 style='text-align:center; color:#facc15;'>{my_data['gan']}{my_data['ji']}</h1>", unsafe_allow_html=True)
             st.caption("▲ 본인의 일주 (타고난 기운)")
+            
+            # 사주 전체 보여주기 (년/월/일/시)
+            s = my_data['saju_full']
+            st.markdown(f"""
+                <table class="saju-table">
+                    <tr><th>시주 (Time)</th><th>일주 (Day)</th><th>월주 (Month)</th><th>년주 (Year)</th></tr>
+                    <tr>
+                        <td>{s['time']}</td>
+                        <td style="color:#facc15; border: 2px solid #facc15;">{s['day']}</td>
+                        <td>{s['month']}</td>
+                        <td>{s['year']}</td>
+                    </tr>
+                    <tr><td>말년/자식</td><td>나 자신(본원)</td><td>사회/부모</td><td>조상/초년</td></tr>
+                </table>
+            """, unsafe_allow_html=True)
+
             st.write(f"**타고난 성향:** {my_data['desc']}")
             st.info(f"💡 {my_data['sinsal']}")
-            
-            # [시간 해석 결과 표시] - 결과창에도 시간이 나오도록 추가했습니다.
-            st.write("---")
             st.success(my_data['time_info'])
         
         # 2. 선택한 연도(평생) 운세
@@ -438,7 +506,8 @@ if go:
         if is_relation:
             with st.expander(f"👥 4. {t_name}님과의 관계 분석 (나와 상대방)"):
                 st.markdown("### ❤️ 궁합 및 관계 정밀 진단")
-                st.write(f"상대방({t_name})님은 **{t_data['gan']}{t_data['ji']} 일주**입니다.")
+                t_s = t_data['saju_full']
+                st.write(f"상대방({t_name})님은 **{t_s['day']} ({t_data['gan']}{t_data['ji']}) 일주**입니다.")
                 st.write(f"**성향:** {t_data['desc']}")
                 
                 # 심층 관계 분석 로직 (데이터 길이 확보)
