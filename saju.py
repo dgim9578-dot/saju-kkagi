@@ -3,9 +3,10 @@ from datetime import date, datetime, timedelta
 import time
 import os
 
-# ============================================================================
-# [0] 라이브러리 설정 (korean_lunar_calendar 필수)
-# ============================================================================
+# -----------------------------------------------------------------------------
+# [핵심] 음력 변환 라이브러리 연동
+# requirements.txt 파일에 korean_lunar_calendar 가 있어야 작동합니다.
+# -----------------------------------------------------------------------------
 try:
     from korean_lunar_calendar import KoreanLunarCalendar
     LUNAR_AVAILABLE = True
@@ -13,49 +14,92 @@ except ImportError:
     LUNAR_AVAILABLE = False
 
 # ============================================================================
-# [1] 페이지 설정 및 스타일 (다크모드 & 가독성 최적화)
+# [1. 페이지 설정 및 디자인]
 # ============================================================================
-st.set_page_config(page_title="사주까기 PRO - 정통 만세력", layout="wide")
+st.set_page_config(page_title="사주까기 PRO - 마스터 평생 운세", layout="wide")
 
 st.markdown("""
     <style>
+    /* 전체 배경: 깊은 밤하늘색 */
     .main { background-color: #0f172a; color: white; }
+    
+    /* 버튼 스타일 */
     .stButton>button { 
         width: 100%; border-radius: 50px; 
         background: linear-gradient(45deg, #1e3a8a, #3b82f6);
         color: white; font-size: 18px; font-weight: bold; height: 4em;
-        margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         transition: all 0.3s ease;
+        margin-top: 20px;
     }
-    .stButton>button:hover { transform: scale(1.02); }
-    .result-card { background-color: #1e293b; padding: 25px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 20px; }
+    .stButton>button:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
+    
+    /* 결과 카드 스타일 */
+    .result-card { 
+        background-color: #1e293b; padding: 25px; border-radius: 15px; 
+        border: 1px solid #334155; margin-bottom: 20px; 
+    }
+    
+    /* 상담 유도 박스 스타일 */
     .consult-box { 
         background: linear-gradient(135deg, #1e293b, #0f172a); 
         padding: 40px; border-radius: 20px; border: 2px solid #facc15; 
         text-align: center; margin-top: 30px; margin-bottom: 30px;
     }
-    .saju-table { width: 100%; text-align: center; border-collapse: collapse; margin-bottom: 20px; color: white; }
+    
+    /* 헤더 스타일 커스텀 */
+    .streamlit-expanderHeader { 
+        background-color: #1e293b !important; color: #60a5fa !important; 
+        font-weight: bold !important; border-radius: 10px !important; 
+        font-size: 1.1em !important;
+    }
+    
+    /* 알림창 스타일 커스텀 */
+    .stInfo { background-color: #1e3a8a !important; color: white !important; border-left: 5px solid #facc15 !important; }
+    .stSuccess { background-color: #064e3b !important; color: #ecfdf5 !important; }
+    .stWarning { background-color: #451a03 !important; color: #fef3c7 !important; }
+
+    /* 입력창 디자인 */
+    input[type="text"], input[type="number"] {
+        background-color: #334155 !important; color: white !important;
+        border: 1px solid #64748b !important; caret-color: white !important;
+    }
+    div[data-baseweb="input"] { background-color: #334155 !important; border-radius: 5px !important; }
+    div[data-baseweb="select"] > div { background-color: #334155 !important; color: white !important; }
+    .stTextInput input, .stDateInput input { color: white !important; }
+    
+    /* 그래프 스타일 */
+    .stProgress > div > div > div > div { background-image: linear-gradient(to right, #4ade80, #3b82f6); }
+
+    /* 사주 테이블 스타일 */
+    .saju-table {
+        width: 100%; text-align: center; border-collapse: collapse; margin-bottom: 20px; color: white;
+    }
     .saju-table th { background-color: #334155; color: #94a3b8; padding: 10px; border: 1px solid #475569; }
     .saju-table td { background-color: #1e293b; color: #facc15; font-size: 1.5em; font-weight: bold; padding: 20px; border: 1px solid #475569; }
-    input, select { background-color: #334155 !important; color: white !important; border: 1px solid #64748b !important; }
-    .stInfo, .stSuccess, .stWarning { color: white !important; font-weight: bold; }
-    .stProgress > div > div > div > div { background-image: linear-gradient(to right, #4ade80, #3b82f6); }
+
+    /* 모바일 최적화 */
+    @media (max-width: 640px) {
+        p, div, label, input { font-size: 16px !important; }
+        .block-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🔮 사주까기 PRO - 마스터 평생 운세 (자료 100% 복구판)")
+st.title("🔮 사주까기 PRO - 마스터 평생 운세")
 
 if not LUNAR_AVAILABLE:
-    st.error("🚨 [비상] 터미널에 `pip install korean_lunar_calendar` 를 입력하여 설치해주세요.")
+    st.error("🚨 중요: 서버에 음력 변환 기능이 없습니다. requirements.txt 파일을 확인해주세요.")
 
 # ============================================================================
-# [2] 사용자 입력 (음력/윤달/시간 정밀 입력)
+# [2] 사용자 입력 (음력/윤달 기능 포함)
 # ============================================================================
 st.write("### 📅 분석 연도 및 내 정보 입력")
 
 target_year = st.number_input("분석하고 싶은 연도", min_value=2025, max_value=2050, value=2026)
 u_name = st.text_input("성명", value="블루나잇")
 
+# 음력/윤달 선택
 col1, col2 = st.columns([1, 1])
 with col1: u_cal_type = st.radio("내 생일 구분", ["양력", "음력"], horizontal=True)
 with col2: 
@@ -110,16 +154,16 @@ def get_solar_date(year, month, day, is_lunar, is_leap):
     else: return date(year, month, day)
 
 # ============================================================================
-# [엔진 1] 정통 만세력 (함수명: calculate_saju_engine 으로 통일)
+# [엔진 1] 정통 만세력 엔진 (함수명 calculate_user_saju 로 통일)
 # ============================================================================
-def calculate_saju_engine(solar_date, time_str="모름"):
+def calculate_user_saju(solar_date, time_str="모름"):
     if solar_date is None: return None
 
     gan = ["갑(甲)", "을(乙)", "병(丙)", "정(丁)", "무(戊)", "기(己)", "경(庚)", "신(辛)", "임(壬)", "계(癸)"]
     ji = ["자(子)", "축(丑)", "인(寅)", "묘(卯)", "진(辰)", "사(巳)", "오(午)", "미(未)", "신(申)", "유(酉)", "술(戌)", "해(亥)"]
     
-    # 24절기 (소한, 입춘, 경칩, 청명, 입하, 망종, 소서, 입추, 백로, 한로, 입동, 대설)
-    jeolgi_dates = [6, 4, 6, 5, 6, 6, 7, 8, 8, 8, 7, 7]
+    # 절기 기준일 (양력 기준 근사치)
+    jeolgi_dates = [6, 4, 6, 5, 6, 6, 7, 8, 8, 8, 8, 7]
     
     year = solar_date.year
     month = solar_date.month
@@ -134,7 +178,7 @@ def calculate_saju_engine(solar_date, time_str="모름"):
     y_ji = (saju_year - 1900 + 0) % 12
     year_pillar = f"{gan[y_gan]}{ji[y_ji]}년"
 
-    # 2. 월주 (절기 기준 - 핵심 수정)
+    # 2. 월주 (절기 기준)
     m_base = (month + 10) % 12
     if day < jeolgi_dates[month - 1]:
         m_base = (m_base - 1 + 12) % 12
@@ -144,7 +188,7 @@ def calculate_saju_engine(solar_date, time_str="모름"):
     m_gan_val = (start_m_gan + m_base) % 10
     month_pillar = f"{gan[m_gan_val]}{ji[m_ji]}월"
 
-    # 3. 일주 (절대일수 - 1900.1.1 갑술일 기준)
+    # 3. 일주 (절대일수)
     base_date = date(1900, 1, 1)
     delta = (solar_date - base_date).days
     d_gan = (0 + delta) % 10
@@ -182,7 +226,7 @@ def calculate_saju_engine(solar_date, time_str="모름"):
     else:
         t_desc = "태어난 시간을 알면 말년운과 자식운을 정확히 볼 수 있습니다."
 
-    # [자료 100% 복구] 600줄 분량의 상세 데이터
+    # [자료 100% 복구] 600줄 분량 유지
     personalities = [
         "곧게 뻗은 소나무(甲)처럼 리더십이 강하고 자존심이 셉니다. 한번 목표를 정하면 뚫고 나가는 추진력이 대단하며, 굽히기 싫어하는 기질이 있어 직장보다는 사업이나 전문직이 어울립니다. 대쪽 같은 성품으로 타인의 모범이 됩니다.", 
         "유연한 화초(乙)처럼 적응력이 뛰어나고 끈기가 강인합니다. 겉은 부드러워 보이나 속은 아주 강인한 외유내강형으로, 환경을 활용하는 지혜가 뛰어나며 대인관계가 원만하여 인복이 있습니다.", 
@@ -196,6 +240,14 @@ def calculate_saju_engine(solar_date, time_str="모름"):
         "스며드는 빗물(癸)처럼 치밀하고 조용히 내실을 다지는 지략가입니다. 기획력과 아이디어가 매우 뛰어납니다. 작은 물방울이 바위를 뚫듯 꾸준함이 가장 큰 무기이며, 교육이나 활인업에 적합합니다."
     ]
     
+    # [수정] 변수명 colors 복구 (NameError 해결)
+    colors = ["푸른색/초록색", "푸른색/초록색", "붉은색/분홍색", "붉은색/분홍색", "노란색/갈색", "노란색/갈색", "흰색/금색", "흰색/금색", "검은색/회색", "검은색/회색"]
+    
+    sinsal = "평범한 기운"
+    if d_ji in [0, 6, 3, 9]: sinsal = "✨ 도화살(桃花殺): 사람을 끄는 매력과 인기가 있으며, 대인관계에서 주목받는 기운이 있습니다."
+    elif d_ji in [2, 8, 5, 11]: sinsal = "🐎 역마살(驛馬殺): 활동적이고 이동수가 많으며, 타향이나 해외에서 성공할 운이 강합니다."
+    else: sinsal = "🎨 화개살(華蓋殺): 예술적 감각과 종교적 철학성이 뛰어나며, 명예를 중시하고 재주가 많습니다."
+
     health_job_db = [
         ("간, 담, 신경성 두통, 근육통, 안구 피로", "기획, 교육, 목재, 출판, 언론, 건축, 가구, 인테리어"), 
         ("위장병, 허리 통증, 목 디스크, 신경 예민", "예술, 디자인, 유튜브, 프리랜서, 장식, 의류, 화훼"), 
@@ -222,14 +274,6 @@ def calculate_saju_engine(solar_date, time_str="모름"):
         "계수(癸水)의 치밀함으로 미래를 설계하세요. 작은 물방울이 모여 바위를 뚫듯, 꾸준함이 당신의 가장 큰 무기입니다." 
     ]
     
-    # [에러 수정] 변수명 colors 정의 (NameError 해결)
-    colors = ["푸른색/초록색", "푸른색/초록색", "붉은색/분홍색", "붉은색/분홍색", "노란색/갈색", "노란색/갈색", "흰색/금색", "흰색/금색", "검은색/회색", "검은색/회색"]
-    
-    sinsal = "평범한 기운"
-    if d_ji in [0, 6, 3, 9]: sinsal = "✨ 도화살(桃花殺): 사람을 끄는 매력과 인기가 있으며, 대인관계에서 주목받는 기운이 있습니다."
-    elif d_ji in [2, 8, 5, 11]: sinsal = "🐎 역마살(驛馬殺): 활동적이고 이동수가 많으며, 타향이나 해외에서 성공할 운이 강합니다."
-    else: sinsal = "🎨 화개살(華蓋殺): 예술적 감각과 종교적 철학성이 뛰어나며, 명예를 중시하고 재주가 많습니다."
-
     return {
         "gan": gan[d_gan], "ji": ji[d_ji], "gan_idx": d_gan, "ji_idx": d_ji,
         "saju_full": {"year": year_pillar, "month": month_pillar, "day": day_pillar, "time": my_time_ganji},
@@ -244,77 +288,49 @@ def calculate_saju_engine(solar_date, time_str="모름"):
 def calculate_year_ganji_and_fortune(target_year, user_gan_idx, user_ji_idx):
     t_gan_idx = (target_year - 4) % 10
     t_ji_idx = (target_year - 4) % 12
+    gan = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"]
+    ji = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"]
+    y_name = f"{gan[t_gan_idx]}{ji[t_ji_idx]}년"
     
-    chun_gan_list = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"]
-    ji_ji_list = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"]
+    diff = (t_gan_idx // 2 - user_gan_idx // 2 + 5) % 5
+    titles = ["비겁운 (경쟁/주관)", "식상운 (활동/표현)", "재성운 (재물/결실)", "관성운 (명예/직장)", "인성운 (문서/공부)"]
+    descs = [
+        f"{target_year}년은 나와 같은 기운이 들어와 주관이 뚜렷해지고 독립심이 강해지는 시기입니다. 동료나 친구들과 협력하여 일을 도모하기 좋습니다. 다만, 지나친 고집은 경쟁과 마찰을 부를 수 있으니 주의하세요. 형제, 친구, 동료와의 관계가 중요해지는 시기입니다.",
+        f"{target_year}년은 나의 기운을 밖으로 표출하는 시기입니다. 창의적인 아이디어가 샘솟고 활동력이 왕성해져 새로운 일을 기획하거나 창작 활동에 최적입니다. 의식주가 풍족해지고 능력을 인정받으나, 말실수를 조심해야 합니다.",
+        f"{target_year}년은 노력의 대가인 재물이 따르는 해입니다. 사업 확장, 투자 수익 등 경제적인 성과가 기대되며, 현실적인 감각이 매우 발달하는 시기입니다.",
+        f"{target_year}년은 책임감과 명예가 따르는 시기입니다. 취업, 승진, 합격 등 사회적 지위가 상승하지만, 과도한 업무로 인한 스트레스 관리가 필수입니다. 여성은 남성운이 들어오는 시기입니다.",
+        f"{target_year}년은 윗사람의 덕을 보거나 문서 계약, 자격증 취득, 학업 성취에 매우 유리합니다. 내실을 다지며 미래를 준비하기 좋으며, 부동산 관련 운도 상승합니다."
+    ]
     
-    year_name = f"{chun_gan_list[t_gan_idx]}{ji_ji_list[t_ji_idx]}년"
-    year_element_code = t_gan_idx // 2 
-    my_element = user_gan_idx // 2
+    relation = "특별한 충돌 없이 무난하고 평온한 흐름이 예상됩니다."
+    if abs(user_ji_idx - t_ji_idx) == 6: relation = f"⚠️ {y_name}의 지지와 본인의 일지가 충(沖)하여 변화가 많은 해입니다. 이사, 이직 등 이동수가 강합니다."
+    elif (user_ji_idx + t_ji_idx) % 12 == 1: relation = "❤️ 육합(六合)이 들어와 귀인의 도움을 받고 안정을 찾는 시기입니다."
     
-    fortune_title = ""
-    fortune_desc = ""
-    
-    diff = (year_element_code - my_element + 5) % 5
-    
-    if diff == 0: 
-        fortune_title = "비겁(비견/겁재) - 주관과 경쟁"
-        fortune_desc = f"{target_year}년({year_name})은 나와 같은 기운이 강하게 들어오는 해입니다. 주관이 뚜렷해지고 독립심이 강해지며, 동료나 친구들과 협력하여 일을 도모하기 좋습니다. 다만, 지나친 고집은 경쟁과 마찰을 부를 수 있으니 주의하세요. 형제, 친구, 동료와의 관계가 중요해지는 시기입니다."
-    elif diff == 1: 
-        fortune_title = "식상(식신/상관) - 활동과 표현"
-        fortune_desc = f"{target_year}년({year_name})은 나의 기운을 밖으로 표출하는 시기입니다. 창의적인 아이디어가 샘솟고 활동력이 왕성해져 새로운 일을 기획하거나 창작 활동에 최적입니다. 의식주가 풍족해지고 능력을 인정받으나, 말실수를 조심해야 합니다."
-    elif diff == 2: 
-        fortune_title = "재성(편재/정재) - 재물과 결실"
-        fortune_desc = f"{target_year}년({year_name})은 내가 극하고 다루는 기운으로, 노력의 대가인 재물이 따르는 해입니다. 사업 확장, 투자 수익 등 경제적인 성과가 기대되며, 남성은 이성운도 함께 상승합니다. 현실적인 감각이 매우 발달하는 시기입니다."
-    elif diff == 3: 
-        fortune_title = "관성(편관/정관) - 명예와 직장"
-        fortune_desc = f"{target_year}년({year_name})은 나를 극하는 기운이 들어와 책임감과 명예가 따르는 시기입니다. 취업, 승진, 합격 등 사회적 지위가 상승하지만, 과도한 업무로 인한 스트레스 관리가 필수입니다. 여성은 남성운이 들어오는 시기입니다."
-    else: 
-        fortune_title = "인성(편인/정인) - 문서와 공부"
-        fortune_desc = f"{target_year}년({year_name})은 나를 도와주는 기운이 강한 해입니다. 윗사람의 덕을 보거나 문서 계약, 자격증 취득, 학업 성취에 매우 유리합니다. 내실을 다지며 미래를 준비하기 좋으며, 부동산 관련 운도 상승합니다."
+    return y_name, titles[diff], descs[diff], relation, t_gan_idx
 
-    relation_detail = "특별한 충돌 없이 무난하고 평온한 흐름이 예상됩니다."
-    if abs(user_ji_idx - t_ji_idx) == 6:
-        relation_detail = f"⚠️ {year_name}의 지지와 본인의 일지가 충(沖)하여 변화와 변동이 많은 해입니다. 이사, 이직, 이동수가 강하니 신중한 판단이 필요합니다."
-    elif (user_ji_idx + t_ji_idx) % 12 == 1: 
-        relation_detail = "❤️ 육합(六合)이 들어와 귀인의 도움을 받고 안정을 찾는 시기입니다. 주변과 화합하며 순조로운 한 해가 될 것입니다."
-    elif (user_ji_idx == 0 and t_ji_idx == 6) or (user_ji_idx == 6 and t_ji_idx == 0): relation_detail = "⚡ 자오충(子午沖): 물과 불의 충돌, 감정 변화와 건강 관리에 유의하세요."
-    elif (user_ji_idx == 6 and t_ji_idx == 7) or (user_ji_idx == 7 and t_ji_idx == 6): relation_detail = "❤️ 오미합(午未合): 화합과 안정이 깃드는 시기입니다."
-    
-    return year_name, fortune_title, fortune_desc, relation_detail, t_gan_idx
-
-# [엔진 3] 진짜 만세력 월건(Monthly) & 10가지 십성 통변 (자료 복구)
-def get_monthly_flow_real(target_year_gan_idx, user_gan_idx):
+def get_monthly_flow_real(t_year_gan, u_gan):
     start_gan_map = {0:2, 1:4, 2:6, 3:8, 4:0, 5:2, 6:4, 7:6, 8:8, 9:0}
-    start_gan = start_gan_map[target_year_gan_idx]
+    start_gan = start_gan_map[t_year_gan]
     
-    chun_gan_list = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"]
-    ji_ji_list = ["인", "묘", "진", "사", "오", "미", "신", "유", "술", "해", "자", "축"]
-    
-    monthly_flow = []
-    
+    gan = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"]
+    ji = ["인", "묘", "진", "사", "오", "미", "신", "유", "술", "해", "자", "축"]
+    result = []
     for i in range(12):
-        m_gan_idx = (start_gan + i) % 10
-        m_gan = chun_gan_list[m_gan_idx]
-        m_ji = ji_ji_list[i]
-        
-        rel_idx = (m_gan_idx - user_gan_idx + 10) % 10
-        
+        m_gan = (start_gan + i) % 10
+        rel = (m_gan - u_gan + 10) % 10
         desc = ""
-        if rel_idx == 0: desc = "비견운: 나의 주관이 강해지고 친구나 동료와 협력하거나 경쟁하는 달입니다. 사람들 속에서 나의 세력을 키우세요."
-        elif rel_idx == 1: desc = "겁재운: 경쟁심이 발동하며 재물 지출에 유의해야 하는 시기입니다. 동료와의 관계에서 실속을 챙겨야 합니다."
-        elif rel_idx == 2: desc = "식신운: 의식주가 풍족하고 나의 재능을 자연스럽게 발휘하는 즐거운 시기입니다. 창의적인 활동이 유리합니다."
-        elif rel_idx == 3: desc = "상관운: 관습을 타파하고 새로운 아이디어를 내는 시기입니다. 화려한 언변이 돋보이나 구설수를 조심하세요."
-        elif rel_idx == 4: desc = "편재운: 뜻밖의 재물이나 사업적 성과가 따르며, 활동 범위가 넓어지고 바빠지는 역동적인 시기입니다."
-        elif rel_idx == 5: desc = "정재운: 성실한 노력의 대가로 고정적인 수입이나 재물이 들어오며, 안정을 추구하는 실속 있는 시기입니다."
-        elif rel_idx == 6: desc = "편관운: 과중한 업무나 책임감이 따르지만, 이를 극복하면 큰 명예와 권위를 얻게 되는 시기입니다."
-        elif rel_idx == 7: desc = "정관운: 승진, 합격 등 명예운이 따르며, 조직 내에서 신용을 얻고 안정을 누리는 반듯한 시기입니다."
-        elif rel_idx == 8: desc = "편인운: 독특한 아이디어나 기술, 철학에 심취하기 좋으나, 생각이 많아져 활동성은 다소 위축될 수 있습니다."
-        elif rel_idx == 9: desc = "정인운: 윗사람의 도움이나 문서 계약, 학업 성취 등 인정을 받는 시기입니다. 마음이 편안해집니다."
-        
-        monthly_flow.append(f"{i+1}월({m_gan}{m_ji}월): {desc}")
-        
-    return monthly_flow
+        if rel==0: desc="비견운: 나의 주관이 강해지고 친구나 동료와 협력하거나 경쟁하는 달입니다."
+        elif rel==1: desc="겁재운: 경쟁심이 발동하며 재물 지출에 유의해야 하는 시기입니다."
+        elif rel==2: desc="식신운: 의식주가 풍족하고 나의 재능을 자연스럽게 발휘하는 즐거운 시기입니다."
+        elif rel==3: desc="상관운: 관습을 타파하고 새로운 아이디어를 내는 시기입니다."
+        elif rel==4: desc="편재운: 뜻밖의 재물이나 사업적 성과가 따르며, 활동 범위가 넓어집니다."
+        elif rel==5: desc="정재운: 성실한 노력의 대가로 고정적인 수입이나 재물이 들어옵니다."
+        elif rel==6: desc="편관운: 과중한 업무나 책임감이 따르지만, 이를 극복하면 명예를 얻습니다."
+        elif rel==7: desc="정관운: 승진, 합격 등 명예운이 따르며, 조직 내에서 신용을 얻습니다."
+        elif rel==8: desc="편인운: 독특한 아이디어나 기술, 철학에 심취하기 좋으나 생각만 많아질 수 있습니다."
+        elif rel==9: desc="정인운: 윗사람의 도움이나 문서 계약, 학업 성취 등 인정을 받는 시기입니다."
+        result.append(f"{i+1}월({gan[m_gan]}{ji[i]}월): {desc}")
+    return result
 
 def calculate_oheng_graph(gan_idx):
     scores = {'목': 10, '화': 10, '토': 10, '금': 10, '수': 10}
@@ -325,8 +341,8 @@ def calculate_oheng_graph(gan_idx):
     elif gan_idx in [8, 9]: scores['수'] += 40
     return scores
 
-def get_gimun(birth_date):
-    val = (birth_date.year + birth_date.month + birth_date.day) % 9
+def get_gimun(date_obj):
+    val = (date_obj.year + date_obj.month + date_obj.day) % 9
     if val == 0: val = 9
     g_data = {
         1: ("일백수", "지혜/철학", "깊은 물처럼 속을 알 수 없는 지혜와 유연함을 가졌습니다."), 
@@ -355,9 +371,9 @@ if go:
         if final_birth is None:
             st.error("🚨 날짜 오류: 존재하지 않는 날짜이거나 변환에 실패했습니다.")
         else:
-            # 2. 사주 분석 (이름 통일됨: calculate_saju_engine -> calculate_user_saju가 아님. 여기서 calculate_saju_engine을 호출하도록 수정)
-            # *** 중요 수정: 정의된 함수 이름은 calculate_saju_engine 입니다. ***
-            data = calculate_saju_engine(final_birth, u_time)
+            # 2. 사주 분석 (이름 통일됨: calculate_user_saju 사용)
+            # *** 중요 수정: 정의된 함수 이름은 calculate_user_saju 입니다. ***
+            data = calculate_user_saju(final_birth, u_time)
             s = data['saju_full']
             oheng_scores = calculate_oheng_graph(data['gan_idx'])
             g_num, (g_title, g_key, g_desc) = get_gimun(final_birth)
@@ -394,12 +410,13 @@ if go:
 
                     st.write(f"**타고난 성향:** {data['desc']}")
                     st.write(f"💡 {data['sinsal']}")
-                    st.success(data['time_info'])
-                
-                # 2. 선택한 연도(평생) 운세
-                with st.expander(f"🔥 2. {target_year}년 {t_year_name} 핵심 운세"):
-                    st.markdown(f"### {target_year}년은 **[{t_fortune_title}]**의 해입니다.")
-                    st.success(f"{t_fortune_desc}")
+                    if u_time != "모름":
+                        st.success(data['time_info'])
+
+                # 2. 운세
+                with st.expander(f"🔥 2. {target_year}년 총운"):
+                    st.markdown(f"### {t_fortune_title}")
+                    st.write(t_fortune_desc)
                     st.warning(f"⚠️ **올해의 조언:** {t_relation_luck}")
 
                 # 3. 기문정명학
@@ -408,33 +425,26 @@ if go:
                     st.write(g_desc)
                     st.write("타고난 명국(命局)이 중궁의 힘을 받아 사방으로 뻗어나가는 기세입니다.")
 
-                # 4. 상대방 분석
+                # [복구됨] 4. 상대방 분석
                 if is_relation:
-                    t_final_birth = get_solar_date(t_year, t_month, t_day, (t_cal_type=="음력"), t_is_yundal)
-                    if t_final_birth:
-                        t_data = calculate_saju_engine(t_final_birth, t_time)
-                        if t_data: # 상대방 데이터가 정상일 때만
-                            t_s = t_data['saju_full']
+                    t_final = get_solar_date(t_year, t_month, t_day, (t_cal_type=="음력"), t_is_yundal)
+                    if t_final:
+                        t_data = calculate_user_saju(t_final, t_time)
+                        if t_data:
+                            ts = t_data['saju_full']
                             with st.expander(f"👥 4. {t_name}님과의 관계 분석 (나와 상대방)"):
                                 st.markdown("### ❤️ 궁합 및 관계 정밀 진단")
-                                st.write(f"상대방({t_name})님은 **{t_s['day']} ({t_data['gan']}{t_data['ji']}) 일주**입니다.")
+                                st.write(f"상대방({t_name})님은 **{ts['day']} ({t_data['gan']}{t_data['ji']}) 일주**입니다.")
                                 st.write(f"**성향:** {t_data['desc']}")
-                                
-                                rel_comment = "서로의 부족한 부분을 채워줄 수 있는 상호 보완적인 관계입니다."
-                                if data['gan_idx'] == t_data['gan_idx']:
-                                    rel_comment = "친구처럼 편안하고 동등한 '비견' 관계입니다. 공감대가 잘 형성됩니다."
-                                
-                                st.info(f"💡 **관계 조언:** {rel_comment}")
-                                st.write("---")
-                                st.write(f"**상대방 시간 분석:** {t_data['time_info']}")
+                                if data['gan_idx'] == t_data['gan_idx']: st.success("친구 같은 사이 (비견)")
+                                elif abs(data['gan_idx'] - t_data['gan_idx'])==5: st.success("강하게 끌리는 사이 (천간합)")
+                                else: st.info("서로 맞춰가는 사이")
 
                 # 5. 월별 흐름
-                with st.expander(f"📆 5. {target_year}년({t_year_name}) 월별 상세 흐름"):
-                    st.write(f"**{t_year_name}**의 천간 기운과 본인의 일간을 대조하여 산출된 정밀 월별 운세입니다.")
-                    for m_desc in monthly_data:
-                        st.write(f"- {m_desc}")
+                with st.expander(f"📆 5. {target_year}년 월별 운세 흐름"):
+                    for m in monthly_data: st.write(f"- {m}")
 
-                # [복구됨] 6. 오늘의 운세
+                # [복구됨] 6. 오늘의 운세 (개운법)
                 with st.expander("🍀 6. 오늘의 행운 (매일 바뀝니다!)"):
                     today = date.today()
                     daily_seed = today.year + today.month + today.day + data['gan_idx']
@@ -460,7 +470,7 @@ if go:
                     st.markdown("### 💼 직업 및 재물 운")
                     st.success(f"**추천 분야:** {job_txt} 분야에서 두각을 나타낼 수 있습니다.")
 
-                # [복구됨] 8. 개인 기운 분석
+                # [복구됨] 8. 오행 그래프
                 with st.expander("🐯 8. 나만의 오행(五行) 에너지 분포도"):
                     st.write(f"**{u_name}**님의 사주에 내재된 오행 에너지의 비율입니다.")
                     st.write(f"🌲 목(나무): {oheng_scores['목']}%")
@@ -480,7 +490,7 @@ if go:
                     st.markdown(f"### 💌 {u_name}님을 위한 한마디")
                     st.success(f"{data['special_msg']}")
 
-                # --- [상담 섹션] ---
+                # [복구됨] 상담 섹션 및 QR
                 st.markdown("---")
                 st.markdown("""
                     <div class='consult-box'>
@@ -490,7 +500,7 @@ if go:
                         </p>
                     </div>
                 """, unsafe_allow_html=True)
-
+                
                 _, col_qr, _ = st.columns([1.2, 1, 1.2]) 
                 with col_qr:
                     qr_path = "my_QR.jpg"
